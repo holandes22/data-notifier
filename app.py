@@ -49,17 +49,16 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(stream=sys.stdout)
-    conn = r.connect(RETHINKDB_SERVICE_HOST, 28015).repl()
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+    conn = r.connect(RETHINKDB_SERVICE_HOST, 28015)
     try:
-        r.db_create(DB).run()
+        r.db_create(DB).run(conn)
     except ReqlOpFailedError:
         logging.info('Database already exists')
         try:
-            r.db(DB).table_create(TABLE).run()
+            r.db(DB).table_create(TABLE).run(conn)
         except ReqlOpFailedError:
             logging.info('Table already exists')
-
     conn.close()
     r.set_loop_type("tornado")
 
