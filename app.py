@@ -18,7 +18,6 @@ TABLE = 'collected'
 RETHINKDB_SERVICE_HOST = os.getenv('RETHINKDB_SERVICE_HOST', 'localhost')
 
 
-
 @tornado.gen.coroutine
 def send_collected_alert():
     while True:
@@ -28,6 +27,7 @@ def send_collected_alert():
 
             while (yield feed.fetch_next()):
                 alert = yield feed.next()
+                logging.debug('Sending {}'.format(alert))
                 for subscriber in subscribers:
                     subscriber.write_message(alert)
         except Exception as err:
@@ -53,17 +53,20 @@ if __name__ == "__main__":
     conn = r.connect(RETHINKDB_SERVICE_HOST, 28015)
     try:
         r.db_create(DB).run(conn)
+        logging.info('Database {} created'.format(DB))
     except ReqlOpFailedError:
         logging.info('Database already exists')
-        try:
-            r.db(DB).table_create(TABLE).run(conn)
-        except ReqlOpFailedError:
-            logging.info('Table already exists')
+    try:
+        r.db(DB).table_create(TABLE).run(conn)
+        logging.info('Table {} created'.format(TABLE))
+    except ReqlOpFailedError:
+        logging.info('Table already exists')
     conn.close()
     r.set_loop_type("tornado")
 
     tornado_app = tornado.web.Application([(r'/', WebSocketHandler)])
     server = tornado.httpserver.HTTPServer(tornado_app)
     server.listen(8999)
+    logging.info('Started WebSocket server at port 8999')
     tornado.ioloop.IOLoop.current().add_callback(send_collected_alert)
     tornado.ioloop.IOLoop.instance().start()
